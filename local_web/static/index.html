@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>social-auto-upload 本地控制台</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --text: #e7edf4;
+      --muted: #8b9cb3;
+      --accent: #3d8bfd;
+      --ok: #3ecf8e;
+      --err: #f87171;
+      --border: #2d3a4d;
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+    h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 0.5rem; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .warn {
+      background: #2a2218;
+      border: 1px solid #5c4a2e;
+      color: #fbbf24;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      margin-bottom: 1.25rem;
+    }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.1rem;
+      margin-bottom: 1rem;
+    }
+    section h2 { font-size: 0.95rem; margin: 0 0 0.75rem; color: var(--muted); font-weight: 600; }
+    label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 0.25rem; }
+    input[type="text"], input[type="number"], input[type="datetime-local"], textarea, select {
+      width: 100%;
+      padding: 0.5rem 0.65rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #121a26;
+      color: var(--text);
+      font-size: 0.95rem;
+      margin-bottom: 0.65rem;
+    }
+    textarea { min-height: 72px; resize: vertical; }
+    .row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 0.5rem; }
+    .row label { margin: 0; display: flex; align-items: center; gap: 0.35rem; cursor: pointer; }
+    .platforms { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .platforms label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.65rem;
+      background: #121a26;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      color: var(--text);
+    }
+    .platforms input { accent-color: var(--accent); }
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 0.55rem 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    button:hover { filter: brightness(1.08); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.secondary { background: #334155; }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+    .log {
+      font-family: ui-monospace, monospace;
+      font-size: 0.78rem;
+      background: #0c1018;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 220px;
+      overflow-y: auto;
+      color: #a8c4e8;
+    }
+    .log.ok { border-color: #1e4d3a; color: var(--ok); }
+    .log.err { border-color: #5c2d2d; color: var(--err); }
+    .hidden { display: none !important; }
+    small.hint { color: var(--muted); font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>social-auto-upload 本地控制台</h1>
+    <p class="sub">在浏览器里完成登录检查、视频与图文发布。默认仅监听本机，请勿把端口暴露到公网。</p>
+    <div class="warn">
+      <strong>B 站登录</strong>：网页无法代替真实终端交互时，请在 PowerShell 里执行
+      <code style="color:#fde68a">sau bilibili login --account 你的别名</code>。
+      上传可在本页操作。
+    </div>
+
+    <section>
+      <h2>1. 平台与账号</h2>
+      <div class="platforms" id="platformRadios">
+        <label><input type="radio" name="platform" value="douyin" checked /> 抖音</label>
+        <label><input type="radio" name="platform" value="kuaishou" /> 快手</label>
+        <label><input type="radio" name="platform" value="xiaohongshu" /> 小红书</label>
+        <label><input type="radio" name="platform" value="bilibili" /> Bilibili</label>
+      </div>
+      <label>账号别名（与 cookies 文件名对应，勿含路径符号）</label>
+      <input type="text" id="account" placeholder="例如 my_creator_1 或 我的号" autocomplete="off" />
+    </section>
+
+    <section>
+      <h2>2. 登录 / 检查</h2>
+      <div class="row">
+        <label><input type="checkbox" id="loginHeaded" checked /> 登录时显示浏览器窗口（推荐扫码）</label>
+      </div>
+      <div class="actions">
+        <button type="button" id="btnLogin">扫码登录</button>
+        <button type="button" id="btnCheck" class="secondary">检查 Cookie 是否有效</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. 上传视频</h2>
+      <div id="biliTidRow">
+        <label>B 站分区 tid（必填）</label>
+        <input type="number" id="tid" placeholder="例如 249" min="1" />
+      </div>
+      <label>视频文件</label>
+      <input type="file" id="videoFile" accept="video/*" />
+      <label>标题</label>
+      <input type="text" id="vTitle" />
+      <label>简介</label>
+      <textarea id="vDesc" placeholder="可为空（B 站会沿用标题）"></textarea>
+      <label>话题标签（英文逗号分隔）</label>
+      <input type="text" id="vTags" placeholder="标签1,标签2" />
+      <label>定时发布（留空为立即发布）</label>
+      <input type="text" id="vSchedule" placeholder="2026-04-17 21:30" />
+      <div id="douyinExtra" class="hidden">
+        <label>封面图（可选）</label>
+        <input type="file" id="vThumb" accept="image/*" />
+        <label>商品链接（可选）</label>
+        <input type="text" id="productLink" />
+        <label>商品标题（可选）</label>
+        <input type="text" id="productTitle" />
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="vHeadless" checked /> 上传时后台运行浏览器（无头）</label>
+        <label><input type="checkbox" id="vDebug" /> 调试模式</label>
+      </div>
+      <button type="button" id="btnUploadVideo">开始上传视频</button>
+      <p class="hint">上传耗时取决于网速与文件大小，请耐心等待，勿重复点击。</p>
+    </section>
+
+    <section id="noteSection">
+      <h2>4. 上传图文（抖音 / 快手 / 小红书）</h2>
+      <label>图片（可多选）</label>
+      <input type="file" id="noteImages" accept="image/*" multiple />
+      <label>标题</label>
+      <input type="text" id="nTitle" />
+      <label>正文</label>
+      <textarea id="nNote" placeholder="可为空"></textarea>
+      <label>话题标签</label>
+      <input type="text" id="nTags" />
+      <label>定时发布</label>
+      <input type="text" id="nSchedule" placeholder="留空为立即" />
+      <div class="row">
+        <label><input type="checkbox" id="nHeadless" checked /> 上传时后台运行浏览器（无头）</label>
+        <label><input type="checkbox" id="nDebug" /> 调试模式</label>
+      </div>
+      <button type="button" id="btnUploadNote">发布图文</button>
+    </section>
+
+    <section>
+      <h2>运行日志</h2>
+      <div class="log" id="logBox">就绪。请先安装 Web 依赖：<code>uv pip install -e ".[web]"</code> 后运行 <code>sau-web</code> 或 <code>python -m local_web</code>。</div>
+    </section>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const logBox = $("logBox");
+
+    function platform() {
+      const el = document.querySelector('input[name="platform"]:checked');
+      return el ? el.value : "douyin";
+    }
+
+    function setLog(text, kind) {
+      logBox.textContent = text;
+      logBox.className = "log" + (kind === "ok" ? " ok" : kind === "err" ? " err" : "");
+    }
+
+    function syncPlatformUi() {
+      const p = platform();
+      $("biliTidRow").classList.toggle("hidden", p !== "bilibili");
+      $("douyinExtra").classList.toggle("hidden", p !== "douyin");
+      $("noteSection").classList.toggle("hidden", p === "bilibili");
+    }
+    document.getElementById("platformRadios").addEventListener("change", syncPlatformUi);
+    syncPlatformUi();
+
+    async function postJson(url, body) {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || res.statusText || "请求失败");
+      return data;
+    }
+
+    $("btnLogin").onclick = async () => {
+      const account = $("account").value.trim();
+      if (!account) { setLog("请填写账号别名", "err"); return; }
+      setLog("正在打开登录流程，请按终端或浏览器的提示扫码…");
+      $("btnLogin").disabled = true;
+      try {
+        const data = await postJson("/api/login", {
+          platform: platform(),
+          account,
+          headed: $("loginHeaded").checked,
+        });
+        setLog(JSON.stringify(data, null, 2), "ok");
+      } catch (e) {
+        setLog(String(e.message || e), "err");
+      } finally {
+        $("btnLogin").disabled = false;
+      }
+    };
+
+    $("btnCheck").onclick = async () => {
+      const account = $("account").value.trim();
+      if (!account) { setLog("请填写账号别名", "err"); return; }
+      $("btnCheck").disabled = true;
+      try {
+        const data = await postJson("/api/check", { platform: platform(), account });
+        setLog(data.valid ? "Cookie 有效" : "Cookie 无效或已过期，请重新登录\n" + JSON.stringify(data), data.valid ? "ok" : "err");
+      } catch (e) {
+        setLog(String(e.message || e), "err");
+      } finally {
+        $("btnCheck").disabled = false;
+      }
+    };
+
+    $("btnUploadVideo").onclick = async () => {
+      const account = $("account").value.trim();
+      if (!account) { setLog("请填写账号别名", "err"); return; }
+      const f = $("videoFile").files[0];
+      if (!f) { setLog("请选择视频文件", "err"); return; }
+      const title = $("vTitle").value.trim();
+      if (!title) { setLog("请填写标题", "err"); return; }
+      const fd = new FormData();
+      fd.append("platform", platform());
+      fd.append("account", account);
+      fd.append("video", f);
+      fd.append("title", title);
+      fd.append("desc", $("vDesc").value);
+      fd.append("tags", $("vTags").value);
+      fd.append("schedule", $("vSchedule").value.trim());
+      fd.append("headless", $("vHeadless").checked ? "true" : "false");
+      fd.append("debug", $("vDebug").checked ? "true" : "false");
+      if (platform() === "bilibili") {
+        fd.append("tid", $("tid").value || "");
+      }
+      if (platform() === "douyin") {
+        const t = $("vThumb").files[0];
+        if (t) fd.append("thumbnail", t);
+        fd.append("product_link", $("productLink").value);
+        fd.append("product_title", $("productTitle").value);
+      }
+      setLog("正在上传视频，请勿关闭窗口…");
+      $("btnUploadVideo").disabled = true;
+      try {
+        const res = await fetch("/api/upload/video", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || res.statusText);
+        setLog(JSON.stringify(data, null, 2), "ok");
+      } catch (e) {
+        setLog(String(e.message || e), "err");
+      } finally {
+        $("btnUploadVideo").disabled = false;
+      }
+    };
+
+    $("btnUploadNote").onclick = async () => {
+      if (platform() === "bilibili") {
+        setLog("B 站请使用「上传视频」", "err");
+        return;
+      }
+      const account = $("account").value.trim();
+      if (!account) { setLog("请填写账号别名", "err"); return; }
+      const files = $("noteImages").files;
+      if (!files.length) { setLog("请选择至少一张图片", "err"); return; }
+      const title = $("nTitle").value.trim();
+      if (!title) { setLog("请填写图文标题", "err"); return; }
+      const fd = new FormData();
+      fd.append("platform", platform());
+      fd.append("account", account);
+      for (let i = 0; i < files.length; i++) fd.append("images", files[i]);
+      fd.append("title", title);
+      fd.append("note", $("nNote").value);
+      fd.append("tags", $("nTags").value);
+      fd.append("schedule", $("nSchedule").value.trim());
+      fd.append("headless", $("nHeadless").checked ? "true" : "false");
+      fd.append("debug", $("nDebug").checked ? "true" : "false");
+      setLog("正在发布图文…");
+      $("btnUploadNote").disabled = true;
+      try {
+        const res = await fetch("/api/upload/note", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || res.statusText);
+        setLog(JSON.stringify(data, null, 2), "ok");
+      } catch (e) {
+        setLog(String(e.message || e), "err");
+      } finally {
+        $("btnUploadNote").disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>
