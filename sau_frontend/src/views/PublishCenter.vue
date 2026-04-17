@@ -314,27 +314,6 @@
             />
           </div>
 
-          <!-- 标签 (仅在抖音可见) -->
-          <div v-if="tab.selectedPlatform === 3" class="product-section">
-            <h3>商品链接</h3>
-            <el-input
-              v-model="tab.productTitle"
-              type="text"
-              :rows="1"
-              placeholder="请输入商品名称"
-              maxlength="200"
-              class="product-name-input"
-            />
-            <el-input
-              v-model="tab.productLink"
-              type="text"
-              :rows="1"
-              placeholder="请输入商品链接"
-              maxlength="200"
-              class="product-link-input"
-            />
-          </div>
-
           <!-- 标题输入 -->
           <div class="title-section">
             <h3>标题</h3>
@@ -545,8 +524,6 @@ const defaultTabInit = {
   selectedAccounts: [], // 选中的账号ID列表
   selectedPlatform: 1, // 选中的平台（单选）
   title: '',
-  productLink: '', // 商品链接
-  productTitle: '', // 商品名称
   selectedTopics: [], // 话题列表（不带#号）
   scheduleEnabled: false, // 定时发布开关
   videosPerDay: 1, // 每天发布视频数量
@@ -804,8 +781,6 @@ const confirmPublish = async (tab) => {
     dailyTimes: tab.scheduleEnabled ? tab.dailyTimes || ['10:00'] : ['10:00'],
     startDays: tab.scheduleEnabled ? tab.startDays || 0 : 0,
     category: tab.isOriginal ? 1 : 0, // 1表示原创，0表示非原创
-    productLink: tab.productLink.trim() || '',
-    productTitle: tab.productTitle.trim() || '',
     isDraft: tab.isDraft
   }
 
@@ -1173,17 +1148,9 @@ const batchPublish = async () => {
         .account-section,
         .platform-section,
         .title-section,
-        .product-section,
         .topic-section,
         .schedule-section {
           margin-bottom: 30px;
-        }
-
-        .product-section {
-          .product-name-input,
-          .product-link-input {
-            margin-bottom: 5px;
-          }
         }
         
         .video-upload {

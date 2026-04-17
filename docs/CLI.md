@@ -143,13 +143,6 @@ CLI 将 `debug` 和 `headless` 拆成了两个独立维度：
 --thumbnail videos/demo.png
 ```
 
-抖音额外支持：
-
-```bash
---product-link https://example.com/item
---product-title 示例商品
-```
-
 Bilibili 额外要求：
 
 ```bash

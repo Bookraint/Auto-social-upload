@@ -138,7 +138,6 @@ sau douyin upload-video --account <别名> --file videos/demo.mp4 --title "标�
 ### 7.2 视频附加参数（节选）
 
 - 通用：`--thumbnail 封面图.png`（见 `docs/CLI.md`）
-- 抖音可选：`--product-link`、`--product-title`（带货相关）
 
 ### 7.3 无头 / 有头 / 调试
 

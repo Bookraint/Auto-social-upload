@@ -112,6 +112,17 @@ def create_app() -> Flask:
                 result = _run(login_xiaohongshu_account(account, headless=headless))
             elif platform == "bilibili":
                 result = _run(login_bilibili_account(account))
+                # biliup login requires an interactive terminal; web cannot provide one
+                if not result.get("success") and "interactive terminal" in result.get("message", ""):
+                    return jsonify(
+                        {
+                            "ok": False,
+                            "needs_terminal": True,
+                            "account": account,
+                            "message": result.get("message"),
+                            "account_file": result.get("account_file"),
+                        }
+                    )
             else:
                 return jsonify({"ok": False, "error": "未知平台"}), 400
         except Exception as exc:
@@ -205,8 +216,6 @@ def create_app() -> Flask:
                     tags=tags,
                     publish_date=publish_date,
                     thumbnail_file=thumb_path,
-                    product_link=(form.get("product_link") or "").strip(),
-                    product_title=(form.get("product_title") or "").strip(),
                     publish_strategy=strat,
                     debug=debug,
                     headless=headless,

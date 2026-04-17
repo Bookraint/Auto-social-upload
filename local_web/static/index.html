@@ -3,339 +3,933 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>social-auto-upload 本地控制台</title>
+  <title>发布助手 · social-auto-upload</title>
   <style>
     :root {
-      --bg: #0f1419;
-      --panel: #1a2332;
-      --text: #e7edf4;
-      --muted: #8b9cb3;
-      --accent: #3d8bfd;
-      --ok: #3ecf8e;
-      --err: #f87171;
-      --border: #2d3a4d;
-      font-family: "Segoe UI", system-ui, sans-serif;
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #7d8590;
+      --accent: #388bfd;
+      --accent-hover: #58a6ff;
+      --ok: #3fb950;
+      --err: #f85149;
+      --warn: #d29922;
+      --warn-bg: #161209;
+      --warn-border: #3d2b00;
+      --radius: 10px;
+      --radius-sm: 6px;
+      font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+      font-size: 14px;
     }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); line-height: 1.6; }
+    a { color: var(--accent-hover); }
+
+    /* ── Layout ────────────────────────────────────────── */
+    .app { display: flex; flex-direction: column; min-height: 100vh; }
+    .topbar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 0 20px; height: 52px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .topbar-logo { font-weight: 700; font-size: 15px; color: var(--text); }
+    .topbar-logo span { color: var(--accent-hover); }
+    .topbar-hint { margin-left: auto; font-size: 12px; color: var(--muted); }
+
+    .main { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ───────────────────────────────────────── */
+    .sidebar {
+      width: 180px; flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      padding: 16px 8px;
+    }
+    .sidebar-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 0 8px 8px; }
+    .platform-btn {
+      display: flex; align-items: center; gap: 10px;
+      width: 100%; padding: 9px 10px;
+      border: none; border-radius: var(--radius-sm);
+      background: transparent; color: var(--muted);
+      cursor: pointer; text-align: left; font-size: 14px;
+      transition: background .15s, color .15s;
+    }
+    .platform-btn:hover { background: var(--surface2); color: var(--text); }
+    .platform-btn.active { background: #1f2d45; color: var(--accent-hover); font-weight: 600; }
+    .platform-btn .icon { font-size: 18px; width: 22px; text-align: center; flex-shrink: 0; }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--border); margin-left: auto; flex-shrink: 0;
+      transition: background .3s;
+    }
+    .status-dot.ok { background: var(--ok); }
+    .status-dot.err { background: var(--err); }
+    .status-dot.loading { background: var(--warn); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── Content ───────────────────────────────────────── */
+    .content { flex: 1; overflow-y: auto; padding: 24px; }
+    .content-inner { max-width: 640px; }
+
+    /* ── Cards ─────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+    }
+    .card-head {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .card-head-title { font-weight: 600; font-size: 14px; }
+    .card-head-sub { font-size: 12px; color: var(--muted); margin-left: 4px; }
+    .card-body { padding: 16px; }
+
+    /* ── Form ───────────────────────────────────────────── */
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+    .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 500; }
+    .field input[type="text"],
+    .field input[type="number"],
+    .field textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
       background: var(--bg);
       color: var(--text);
-      line-height: 1.5;
+      font-size: 14px;
+      outline: none;
+      transition: border-color .15s;
     }
-    .wrap { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
-    h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 0.5rem; }
-    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
-    .warn {
-      background: #2a2218;
-      border: 1px solid #5c4a2e;
-      color: #fbbf24;
-      padding: 0.75rem 1rem;
-      border-radius: 8px;
-      font-size: 0.88rem;
-      margin-bottom: 1.25rem;
-    }
-    section {
-      background: var(--panel);
+    .field input:focus, .field textarea:focus { border-color: var(--accent); }
+    .field textarea { min-height: 72px; resize: vertical; font-family: inherit; }
+    .field input::placeholder, .field textarea::placeholder { color: var(--muted); }
+
+    /* account row */
+    .acct-row { display: flex; gap: 8px; align-items: flex-end; }
+    .acct-row .field { flex: 1; margin-bottom: 0; }
+    .badge-status {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 12px; padding: 8px 10px;
+      border-radius: var(--radius-sm);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1rem 1.1rem;
-      margin-bottom: 1rem;
+      background: var(--surface2);
+      white-space: nowrap; color: var(--muted);
+      min-width: 90px; justify-content: center;
     }
-    section h2 { font-size: 0.95rem; margin: 0 0 0.75rem; color: var(--muted); font-weight: 600; }
-    label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 0.25rem; }
-    input[type="text"], input[type="number"], input[type="datetime-local"], textarea, select {
-      width: 100%;
-      padding: 0.5rem 0.65rem;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: #121a26;
-      color: var(--text);
-      font-size: 0.95rem;
-      margin-bottom: 0.65rem;
-    }
-    textarea { min-height: 72px; resize: vertical; }
-    .row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 0.5rem; }
-    .row label { margin: 0; display: flex; align-items: center; gap: 0.35rem; cursor: pointer; }
-    .platforms { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
-    .platforms label {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      padding: 0.35rem 0.65rem;
-      background: #121a26;
-      border: 1px solid var(--border);
-      border-radius: 8px;
+    .badge-status.ok { color: var(--ok); border-color: #1b3a22; background: #111d14; }
+    .badge-status.err { color: var(--err); border-color: #3d1a1a; background: #1a1010; }
+
+    /* file input */
+    .file-drop {
+      position: relative;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-sm);
+      padding: 18px 14px;
+      text-align: center;
       cursor: pointer;
-      font-size: 0.88rem;
-      color: var(--text);
+      transition: border-color .15s;
+      color: var(--muted);
+      font-size: 13px;
     }
-    .platforms input { accent-color: var(--accent); }
-    button {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      padding: 0.55rem 1rem;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      cursor: pointer;
-      font-weight: 500;
+    .file-drop:hover, .file-drop.drag-over { border-color: var(--accent); color: var(--accent-hover); }
+    .file-drop input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; }
+    .file-drop .icon { font-size: 24px; display: block; margin-bottom: 4px; }
+    .file-chosen { margin-top: 8px; font-size: 12px; color: var(--text); font-weight: 500; text-align: left; }
+
+    /* image preview */
+    .img-previews { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .img-thumb {
+      width: 72px; height: 72px; object-fit: cover;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
     }
-    button:hover { filter: brightness(1.08); }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    button.secondary { background: #334155; }
-    .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
-    .log {
+    .img-count { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* rows */
+    .row { display: flex; gap: 10px; }
+    .row .field { flex: 1; }
+
+    /* advanced toggle */
+    .adv-toggle {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--muted);
+      cursor: pointer; user-select: none; margin-bottom: 10px;
+    }
+    .adv-toggle:hover { color: var(--text); }
+    .adv-content { display: none; }
+    .adv-content.open { display: block; }
+    .adv-grid { display: flex; flex-wrap: wrap; gap: 12px; }
+    .adv-grid label {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--muted); cursor: pointer;
+    }
+    .adv-grid label input { accent-color: var(--accent); }
+
+    /* ── Buttons ────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px;
+      border: none; border-radius: var(--radius-sm);
+      font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: filter .15s, opacity .15s;
+    }
+    .btn:hover:not(:disabled) { filter: brightness(1.1); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+    .spinner {
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      animation: spin .6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Tabs ───────────────────────────────────────────── */
+    .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .tab-btn {
+      padding: 8px 16px; font-size: 13px; font-weight: 500;
+      border: none; background: none; color: var(--muted);
+      cursor: pointer; position: relative; border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .tab-btn.active { color: var(--accent-hover); border-bottom-color: var(--accent-hover); }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ── B站 modal ──────────────────────────────────────── */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.65);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200; padding: 20px;
+    }
+    .overlay.hidden { display: none; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 24px; max-width: 460px; width: 100%;
+    }
+    .modal-title { font-weight: 700; font-size: 16px; margin-bottom: 8px; }
+    .modal-body { color: var(--muted); font-size: 13px; line-height: 1.7; margin-bottom: 16px; }
+    .cmd-box {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 16px;
+    }
+    .cmd-box code { flex: 1; font-family: ui-monospace, monospace; font-size: 13px; color: var(--accent-hover); word-break: break-all; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 8px; }
+
+    /* ── Toasts ─────────────────────────────────────────── */
+    .toast-container { position: fixed; top: 16px; right: 16px; z-index: 300; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    .toast {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px 14px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+      pointer-events: auto;
+      min-width: 260px; max-width: 340px;
+      animation: slideIn .2s ease;
+    }
+    .toast.ok  { border-color: #1b3a22; }
+    .toast.err { border-color: #3d1a1a; }
+    .toast.warn{ border-color: var(--warn-border); }
+    .toast-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .toast-text { flex: 1; font-size: 13px; }
+    .toast-title { font-weight: 600; margin-bottom: 2px; }
+    .toast-msg { color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .toast-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; align-self: flex-start; }
+    @keyframes slideIn { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ── Log ────────────────────────────────────────────── */
+    .log-box {
       font-family: ui-monospace, monospace;
-      font-size: 0.78rem;
-      background: #0c1018;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 0.75rem;
-      white-space: pre-wrap;
-      word-break: break-word;
-      max-height: 220px;
-      overflow-y: auto;
-      color: #a8c4e8;
+      font-size: 12px; line-height: 1.6;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 12px;
+      max-height: 180px; overflow-y: auto;
+      color: var(--muted); white-space: pre-wrap; word-break: break-word;
     }
-    .log.ok { border-color: #1e4d3a; color: var(--ok); }
-    .log.err { border-color: #5c2d2d; color: var(--err); }
+    .log-line.ok   { color: var(--ok); }
+    .log-line.err  { color: var(--err); }
+    .log-line.info { color: #79c0ff; }
+
+    /* ── Progress overlay ───────────────────────────────── */
+    .progress-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.55);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 150;
+    }
+    .progress-overlay.hidden { display: none; }
+    .progress-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 32px 40px;
+      text-align: center; display: flex; flex-direction: column; align-items: center; gap: 16px;
+    }
+    .progress-spinner {
+      width: 40px; height: 40px; border-radius: 50%;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      animation: spin .8s linear infinite;
+    }
+    .progress-title { font-weight: 600; font-size: 15px; }
+    .progress-sub { font-size: 13px; color: var(--muted); }
+
+    /* ── Misc ───────────────────────────────────────────── */
     .hidden { display: none !important; }
-    small.hint { color: var(--muted); font-size: 0.8rem; }
+    .divider { height: 1px; background: var(--border); margin: 12px 0; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .boli-note { font-size: 12px; color: var(--muted); padding: 10px 12px; background: var(--bg); border-radius: var(--radius-sm); border: 1px solid var(--border); line-height: 1.6; }
+    code { font-family: ui-monospace, monospace; background: var(--surface2); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
+    @media (max-width: 600px) {
+      .sidebar { display: none; }
+      .content { padding: 14px; }
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>social-auto-upload 本地控制台</h1>
-    <p class="sub">在浏览器里完成登录检查、视频与图文发布。默认仅监听本机，请勿把端口暴露到公网。</p>
-    <div class="warn">
-      <strong>B 站登录</strong>：网页无法代替真实终端交互时，请在 PowerShell 里执行
-      <code style="color:#fde68a">sau bilibili login --account 你的别名</code>。
-      上传可在本页操作。
-    </div>
+<div class="app">
 
-    <section>
-      <h2>1. 平台与账号</h2>
-      <div class="platforms" id="platformRadios">
-        <label><input type="radio" name="platform" value="douyin" checked /> 抖音</label>
-        <label><input type="radio" name="platform" value="kuaishou" /> 快手</label>
-        <label><input type="radio" name="platform" value="xiaohongshu" /> 小红书</label>
-        <label><input type="radio" name="platform" value="bilibili" /> Bilibili</label>
-      </div>
-      <label>账号别名（与 cookies 文件名对应，勿含路径符号）</label>
-      <input type="text" id="account" placeholder="例如 my_creator_1 或 我的号" autocomplete="off" />
-    </section>
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-logo">发布助手 <span>·</span> social-auto-upload</div>
+    <div class="topbar-hint">仅本机访问 · 请勿暴露到公网</div>
+  </header>
 
-    <section>
-      <h2>2. 登录 / 检查</h2>
-      <div class="row">
-        <label><input type="checkbox" id="loginHeaded" checked /> 登录时显示浏览器窗口（推荐扫码）</label>
-      </div>
-      <div class="actions">
-        <button type="button" id="btnLogin">扫码登录</button>
-        <button type="button" id="btnCheck" class="secondary">检查 Cookie 是否有效</button>
-      </div>
-    </section>
+  <div class="main">
 
-    <section>
-      <h2>3. 上传视频</h2>
-      <div id="biliTidRow">
-        <label>B 站分区 tid（必填）</label>
-        <input type="number" id="tid" placeholder="例如 249" min="1" />
-      </div>
-      <label>视频文件</label>
-      <input type="file" id="videoFile" accept="video/*" />
-      <label>标题</label>
-      <input type="text" id="vTitle" />
-      <label>简介</label>
-      <textarea id="vDesc" placeholder="可为空（B 站会沿用标题）"></textarea>
-      <label>话题标签（英文逗号分隔）</label>
-      <input type="text" id="vTags" placeholder="标签1,标签2" />
-      <label>定时发布（留空为立即发布）</label>
-      <input type="text" id="vSchedule" placeholder="2026-04-17 21:30" />
-      <div id="douyinExtra" class="hidden">
-        <label>封面图（可选）</label>
-        <input type="file" id="vThumb" accept="image/*" />
-        <label>商品链接（可选）</label>
-        <input type="text" id="productLink" />
-        <label>商品标题（可选）</label>
-        <input type="text" id="productTitle" />
-      </div>
-      <div class="row">
-        <label><input type="checkbox" id="vHeadless" checked /> 上传时后台运行浏览器（无头）</label>
-        <label><input type="checkbox" id="vDebug" /> 调试模式</label>
-      </div>
-      <button type="button" id="btnUploadVideo">开始上传视频</button>
-      <p class="hint">上传耗时取决于网速与文件大小，请耐心等待，勿重复点击。</p>
-    </section>
+    <!-- Sidebar: platform selector -->
+    <aside class="sidebar">
+      <div class="sidebar-label">平台</div>
+      <button class="platform-btn active" data-p="douyin">
+        <span class="icon">🎵</span>抖音
+        <span class="status-dot" id="dot-douyin"></span>
+      </button>
+      <button class="platform-btn" data-p="kuaishou">
+        <span class="icon">⚡</span>快手
+        <span class="status-dot" id="dot-kuaishou"></span>
+      </button>
+      <button class="platform-btn" data-p="xiaohongshu">
+        <span class="icon">📕</span>小红书
+        <span class="status-dot" id="dot-xiaohongshu"></span>
+      </button>
+      <button class="platform-btn" data-p="bilibili">
+        <span class="icon">📺</span>Bilibili
+        <span class="status-dot" id="dot-bilibili"></span>
+      </button>
+    </aside>
 
-    <section id="noteSection">
-      <h2>4. 上传图文（抖音 / 快手 / 小红书）</h2>
-      <label>图片（可多选）</label>
-      <input type="file" id="noteImages" accept="image/*" multiple />
-      <label>标题</label>
-      <input type="text" id="nTitle" />
-      <label>正文</label>
-      <textarea id="nNote" placeholder="可为空"></textarea>
-      <label>话题标签</label>
-      <input type="text" id="nTags" />
-      <label>定时发布</label>
-      <input type="text" id="nSchedule" placeholder="留空为立即" />
-      <div class="row">
-        <label><input type="checkbox" id="nHeadless" checked /> 上传时后台运行浏览器（无头）</label>
-        <label><input type="checkbox" id="nDebug" /> 调试模式</label>
-      </div>
-      <button type="button" id="btnUploadNote">发布图文</button>
-    </section>
+    <!-- Main content -->
+    <main class="content">
+      <div class="content-inner">
 
-    <section>
-      <h2>运行日志</h2>
-      <div class="log" id="logBox">就绪。请先安装 Web 依赖：<code>uv pip install -e ".[web]"</code> 后运行 <code>sau-web</code> 或 <code>python -m local_web</code>。</div>
-    </section>
+        <!-- Account card -->
+        <div class="card">
+          <div class="card-head">
+            <span id="platLabel">🎵 抖音</span>
+            <span class="card-head-title">账号</span>
+          </div>
+          <div class="card-body">
+            <div class="acct-row">
+              <div class="field">
+                <label>账号别名 <span style="color:var(--muted)">（与 cookies 文件夹中文件名对应）</span></label>
+                <input type="text" id="account" placeholder="例如 my_account_1" autocomplete="off" />
+              </div>
+              <div class="badge-status" id="cookieBadge">—</div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-secondary btn-sm" id="btnCheck">
+                <span>检查登录状态</span>
+              </button>
+              <button class="btn btn-primary btn-sm" id="btnLogin">
+                <span>扫码登录</span>
+              </button>
+            </div>
+            <p class="hint" id="loginHint">登录时会弹出浏览器窗口，用手机 App 扫码即可。</p>
+          </div>
+        </div>
+
+        <!-- Publish card -->
+        <div class="card">
+          <div class="card-head">
+            <span class="card-head-title">发布内容</span>
+          </div>
+          <div class="card-body" style="padding-top:4px">
+
+            <div class="tabs">
+              <button class="tab-btn active" data-tab="video">📹 视频</button>
+              <button class="tab-btn" data-tab="note" id="noteTabBtn">🖼️ 图文</button>
+            </div>
+
+            <!-- Video pane -->
+            <div class="tab-pane active" id="pane-video">
+              <div class="field" id="tidField" style="display:none">
+                <label>Bilibili 分区 tid <span style="color:var(--err)">*必填</span></label>
+                <input type="number" id="tid" placeholder="例如 249（科技区）" min="1" />
+                <p class="hint">不同分区的 tid 不同，请查阅 B 站分区 ID 列表</p>
+              </div>
+              <div class="field">
+                <label>选择视频文件</label>
+                <div class="file-drop" id="vFileDrop">
+                  <input type="file" id="videoFile" accept="video/*" />
+                  <span class="icon">📁</span>
+                  点击选择，或将视频拖入此处
+                  <div class="file-chosen hidden" id="vFileChosen"></div>
+                </div>
+              </div>
+              <div class="field">
+                <label>标题 <span style="color:var(--err)">*</span></label>
+                <input type="text" id="vTitle" placeholder="视频标题" />
+              </div>
+              <div class="field">
+                <label>简介</label>
+                <textarea id="vDesc" placeholder="简介（可留空）"></textarea>
+              </div>
+              <div class="field">
+                <label>话题标签（英文逗号分隔）</label>
+                <input type="text" id="vTags" placeholder="例如 搞笑,日常,vlog" />
+              </div>
+              <div class="field">
+                <label>定时发布（留空 = 立即发布）</label>
+                <input type="text" id="vSchedule" placeholder="2026-04-20 18:00" />
+              </div>
+
+              <!-- 抖音视频：可选自定义封面 -->
+              <div id="douyinExtra" class="hidden">
+                <div class="divider"></div>
+                <p class="hint" style="margin-bottom:10px">抖音视频可选自定义封面</p>
+                <div class="field">
+                  <label>封面图（可选）</label>
+                  <div class="file-drop">
+                    <input type="file" id="vThumb" accept="image/*" />
+                    <span class="icon">🖼️</span>
+                    点击选择封面图
+                    <div class="file-chosen hidden" id="vThumbChosen"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="divider"></div>
+              <div class="adv-toggle" id="advVideoToggle">
+                <span>▶</span> 高级选项
+              </div>
+              <div class="adv-content" id="advVideoContent">
+                <div class="adv-grid">
+                  <label><input type="checkbox" id="vHeadless" checked /> 后台浏览器（无头模式，不弹出窗口）</label>
+                  <label><input type="checkbox" id="vDebug" /> 调试模式</label>
+                </div>
+              </div>
+
+              <div class="btn-group" style="margin-top:14px">
+                <button class="btn btn-primary" id="btnUploadVideo">🚀 开始上传视频</button>
+              </div>
+              <p class="hint">视频上传耗时较长，请耐心等待，勿重复点击或关闭页面。</p>
+            </div>
+
+            <!-- Note pane -->
+            <div class="tab-pane" id="pane-note">
+              <div class="field">
+                <label>选择图片（可多选）</label>
+                <div class="file-drop" id="nFileDrop">
+                  <input type="file" id="noteImages" accept="image/*" multiple />
+                  <span class="icon">🖼️</span>
+                  点击选择图片，或拖入此处
+                </div>
+                <div class="img-previews" id="imgPreviews"></div>
+                <div class="img-count hidden" id="imgCount"></div>
+              </div>
+              <div class="field">
+                <label>标题 <span style="color:var(--err)">*</span></label>
+                <input type="text" id="nTitle" placeholder="图文标题" />
+              </div>
+              <div class="field">
+                <label>正文</label>
+                <textarea id="nNote" placeholder="正文内容（可留空）"></textarea>
+              </div>
+              <div class="field">
+                <label>话题标签（英文逗号分隔）</label>
+                <input type="text" id="nTags" placeholder="例如 生活,穿搭" />
+              </div>
+              <div class="field">
+                <label>定时发布（留空 = 立即发布）</label>
+                <input type="text" id="nSchedule" placeholder="2026-04-20 18:00" />
+              </div>
+
+              <div class="divider"></div>
+              <div class="adv-toggle" id="advNoteToggle">
+                <span>▶</span> 高级选项
+              </div>
+              <div class="adv-content" id="advNoteContent">
+                <div class="adv-grid">
+                  <label><input type="checkbox" id="nHeadless" checked /> 后台浏览器（无头模式）</label>
+                  <label><input type="checkbox" id="nDebug" /> 调试模式</label>
+                </div>
+              </div>
+
+              <div class="btn-group" style="margin-top:14px">
+                <button class="btn btn-primary" id="btnUploadNote">🚀 发布图文</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Log -->
+        <div class="card">
+          <div class="card-head">
+            <span class="card-head-title">操作日志</span>
+            <button class="btn btn-secondary btn-sm" style="margin-left:auto" id="btnClearLog">清空</button>
+          </div>
+          <div class="card-body" style="padding:0">
+            <div class="log-box" id="logBox">就绪，等待操作…</div>
+          </div>
+        </div>
+
+      </div>
+    </main>
   </div>
+</div>
 
-  <script>
-    const $ = (id) => document.getElementById(id);
-    const logBox = $("logBox");
+<!-- Progress overlay (during upload) -->
+<div class="progress-overlay hidden" id="progressOverlay">
+  <div class="progress-card">
+    <div class="progress-spinner"></div>
+    <div class="progress-title" id="progressTitle">正在处理…</div>
+    <div class="progress-sub" id="progressSub">请勿关闭或刷新页面</div>
+  </div>
+</div>
 
-    function platform() {
-      const el = document.querySelector('input[name="platform"]:checked');
-      return el ? el.value : "douyin";
+<!-- B站 terminal modal -->
+<div class="overlay hidden" id="biliModal">
+  <div class="modal">
+    <div class="modal-title">📺 Bilibili 登录需要在终端操作</div>
+    <div class="modal-body">
+      B 站登录通过 <code>biliup</code> 实现，需要在真实终端里交互扫码。
+      请在本机 PowerShell 里执行下面的命令，扫码完成后回到这里上传视频。
+    </div>
+    <div class="cmd-box">
+      <code id="biliCmd">sau bilibili login --account my_account</code>
+      <button class="btn btn-secondary btn-sm" id="btnCopyCmd">复制</button>
+    </div>
+    <p class="hint" style="margin-bottom:16px">如果终端里的二维码显示不全，可打开项目目录下的 <code>qrcode.png</code> 扫码。登录成功后，Cookie 会自动保存，然后就可以在本页上传视频了。</p>
+    <div class="modal-footer">
+      <button class="btn btn-primary" id="btnBiliClose">知道了</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ─────────────────────────────────────────────
+// Utilities
+// ─────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function log(text, kind = "") {
+  const box = $("logBox");
+  const line = document.createElement("div");
+  line.className = "log-line" + (kind ? " " + kind : "");
+  line.textContent = "[" + new Date().toLocaleTimeString() + "] " + text;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+$("btnClearLog").onclick = () => { $("logBox").textContent = ""; };
+
+function toast(title, msg, kind = "ok", duration = 4000) {
+  const icons = { ok: "✅", err: "❌", warn: "⚠️", info: "ℹ️" };
+  const el = document.createElement("div");
+  el.className = "toast " + kind;
+  el.innerHTML = `
+    <span class="toast-icon">${icons[kind] || "ℹ️"}</span>
+    <div class="toast-text">
+      <div class="toast-title">${title}</div>
+      ${msg ? `<div class="toast-msg">${msg}</div>` : ""}
+    </div>
+    <button class="toast-close" title="关闭">×</button>
+  `;
+  el.querySelector(".toast-close").onclick = () => el.remove();
+  $("toastContainer").appendChild(el);
+  if (duration > 0) setTimeout(() => el.remove(), duration);
+}
+
+function showProgress(title, sub) {
+  $("progressTitle").textContent = title;
+  $("progressSub").textContent = sub || "请勿关闭或刷新页面";
+  $("progressOverlay").classList.remove("hidden");
+}
+function hideProgress() {
+  $("progressOverlay").classList.add("hidden");
+}
+
+function btnLoading(btn, loading) {
+  const span = btn.querySelector("span");
+  const existingSpinner = btn.querySelector(".spinner");
+  if (loading) {
+    btn.disabled = true;
+    if (!existingSpinner) {
+      const s = document.createElement("div");
+      s.className = "spinner";
+      btn.insertBefore(s, btn.firstChild);
     }
+  } else {
+    btn.disabled = false;
+    if (existingSpinner) existingSpinner.remove();
+  }
+}
 
-    function setLog(text, kind) {
-      logBox.textContent = text;
-      logBox.className = "log" + (kind === "ok" ? " ok" : kind === "err" ? " err" : "");
+async function postJson(url, body) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, data };
+}
+
+// ─────────────────────────────────────────────
+// Platform selector
+// ─────────────────────────────────────────────
+const PLATFORMS = {
+  douyin:      { label: "🎵 抖音",  noteOk: true  },
+  kuaishou:    { label: "⚡ 快手",  noteOk: true  },
+  xiaohongshu: { label: "📕 小红书", noteOk: true  },
+  bilibili:    { label: "📺 Bilibili", noteOk: false },
+};
+let currentPlatform = "douyin";
+const cookieStatus = {}; // platform -> "ok"|"err"|"unknown"
+
+function setPlatform(p) {
+  currentPlatform = p;
+  document.querySelectorAll(".platform-btn").forEach(b => b.classList.toggle("active", b.dataset.p === p));
+  $("platLabel").textContent = PLATFORMS[p].label;
+
+  const isBili = p === "bilibili";
+  $("tidField").style.display = isBili ? "" : "none";
+  $("douyinExtra").classList.toggle("hidden", p !== "douyin");
+  $("noteTabBtn").classList.toggle("hidden", isBili);
+
+  // If on note tab and switching to bilibili, go to video tab
+  if (isBili && document.querySelector(".tab-btn.active[data-tab='note']")) {
+    setTab("video");
+  }
+
+  // Login hint
+  $("loginHint").textContent = isBili
+    ? "B 站登录需要在终端里操作，点击「扫码登录」查看详情。"
+    : "登录时会弹出浏览器窗口，用手机 App 扫码即可。";
+
+  // Update cookie badge from cache
+  refreshBadge(p);
+}
+
+document.querySelectorAll(".platform-btn").forEach(btn => {
+  btn.onclick = () => setPlatform(btn.dataset.p);
+});
+
+function setDot(p, state) { // state: ok / err / loading / ""
+  const dot = $("dot-" + p);
+  dot.className = "status-dot" + (state ? " " + state : "");
+  cookieStatus[p] = state === "ok" ? "ok" : state === "err" ? "err" : "unknown";
+}
+
+function refreshBadge(p) {
+  const badge = $("cookieBadge");
+  const s = cookieStatus[p];
+  if (s === "ok")  { badge.className = "badge-status ok"; badge.textContent = "✓ 有效"; return; }
+  if (s === "err") { badge.className = "badge-status err"; badge.textContent = "✗ 已失效"; return; }
+  badge.className = "badge-status"; badge.textContent = "—";
+}
+
+// ─────────────────────────────────────────────
+// Tab switcher
+// ─────────────────────────────────────────────
+function setTab(name) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll(".tab-pane").forEach(p => p.classList.toggle("active", p.id === "pane-" + name));
+}
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.onclick = () => setTab(btn.dataset.tab);
+});
+
+// ─────────────────────────────────────────────
+// Advanced toggles
+// ─────────────────────────────────────────────
+["advVideoToggle", "advNoteToggle"].forEach(id => {
+  $(id).onclick = () => {
+    const content = $(id.replace("Toggle", "Content"));
+    const isOpen = content.classList.toggle("open");
+    $(id).querySelector("span").textContent = isOpen ? "▼" : "▶";
+  };
+});
+
+// ─────────────────────────────────────────────
+// File inputs
+// ─────────────────────────────────────────────
+function initFileDrop(dropId, inputId, chosenId) {
+  const drop = $(dropId), input = $(inputId), chosen = chosenId ? $(chosenId) : null;
+  ["dragover", "dragenter"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add("drag-over"); }));
+  ["dragleave", "drop"].forEach(e => drop.addEventListener(e, () => drop.classList.remove("drag-over")));
+  drop.addEventListener("drop", ev => { ev.preventDefault(); if (ev.dataTransfer.files.length) { input.files = ev.dataTransfer.files; input.dispatchEvent(new Event("change")); } });
+  if (chosen) {
+    input.addEventListener("change", () => {
+      const f = input.files[0];
+      if (f) { chosen.textContent = "📎 " + f.name; chosen.classList.remove("hidden"); }
+      else { chosen.classList.add("hidden"); }
+    });
+  }
+}
+initFileDrop("vFileDrop", "videoFile", "vFileChosen");
+
+// vThumb (inside douyinExtra, no separate drop div id)
+$("vThumb").addEventListener("change", () => {
+  const f = $("vThumb").files[0];
+  $("vThumbChosen").textContent = f ? "📎 " + f.name : "";
+  $("vThumbChosen").classList.toggle("hidden", !f);
+});
+
+// Image previews for notes
+$("noteImages").addEventListener("change", () => {
+  const files = Array.from($("noteImages").files);
+  const previews = $("imgPreviews");
+  const cnt = $("imgCount");
+  previews.innerHTML = "";
+  if (!files.length) { cnt.classList.add("hidden"); return; }
+  files.forEach(f => {
+    const img = document.createElement("img");
+    img.className = "img-thumb";
+    img.src = URL.createObjectURL(f);
+    previews.appendChild(img);
+  });
+  cnt.textContent = `已选择 ${files.length} 张图片`;
+  cnt.classList.remove("hidden");
+});
+
+// ─────────────────────────────────────────────
+// Check cookie
+// ─────────────────────────────────────────────
+$("btnCheck").onclick = async () => {
+  const account = $("account").value.trim();
+  if (!account) { toast("请先填写账号别名", "", "warn"); return; }
+  const btn = $("btnCheck");
+  const badge = $("cookieBadge");
+  btnLoading(btn, true);
+  badge.className = "badge-status"; badge.textContent = "检查中…";
+  setDot(currentPlatform, "loading");
+  log(`检查 ${currentPlatform} [${account}] cookie 状态（可能需要 10–30 秒，请耐心）…`, "info");
+
+  try {
+    const { ok, data } = await postJson("/api/check", { platform: currentPlatform, account });
+    if (!ok && !data.valid) {
+      setDot(currentPlatform, "err");
+      refreshBadge(currentPlatform);
+      toast("Cookie 已失效", "请重新扫码登录", "err");
+      log("Cookie 无效或已过期", "err");
+    } else if (data.valid) {
+      setDot(currentPlatform, "ok");
+      refreshBadge(currentPlatform);
+      toast("Cookie 有效", "无需重新登录", "ok");
+      log("Cookie 有效 ✓", "ok");
+    } else {
+      setDot(currentPlatform, "err");
+      refreshBadge(currentPlatform);
+      toast("检查失败", data.error || "未知错误", "err");
+      log("错误：" + (data.error || "未知"), "err");
     }
+  } catch (e) {
+    setDot(currentPlatform, "");
+    refreshBadge(currentPlatform);
+    toast("请求失败", String(e.message || e), "err");
+    log("请求失败：" + e, "err");
+  } finally {
+    btnLoading(btn, false);
+  }
+};
 
-    function syncPlatformUi() {
-      const p = platform();
-      $("biliTidRow").classList.toggle("hidden", p !== "bilibili");
-      $("douyinExtra").classList.toggle("hidden", p !== "douyin");
-      $("noteSection").classList.toggle("hidden", p === "bilibili");
+// ─────────────────────────────────────────────
+// Login
+// ─────────────────────────────────────────────
+$("btnLogin").onclick = async () => {
+  const account = $("account").value.trim();
+  if (!account) { toast("请先填写账号别名", "", "warn"); return; }
+
+  // B站 always show modal
+  if (currentPlatform === "bilibili") {
+    $("biliCmd").textContent = `sau bilibili login --account ${account}`;
+    $("biliModal").classList.remove("hidden");
+    return;
+  }
+
+  const btn = $("btnLogin");
+  btnLoading(btn, true);
+  showProgress("正在打开登录界面…", "浏览器窗口将弹出，请用手机 App 扫码，完成后自动关闭");
+  setDot(currentPlatform, "loading");
+  log(`启动 ${currentPlatform} [${account}] 登录流程…`, "info");
+
+  try {
+    const { ok, data } = await postJson("/api/login", {
+      platform: currentPlatform,
+      account,
+      headed: true,
+    });
+    if (data.needs_terminal) {
+      // shouldn't happen for non-bili, but handle defensively
+      $("biliCmd").textContent = `sau ${currentPlatform} login --account ${account}`;
+      $("biliModal").classList.remove("hidden");
+      return;
     }
-    document.getElementById("platformRadios").addEventListener("change", syncPlatformUi);
-    syncPlatformUi();
-
-    async function postJson(url, body) {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || res.statusText || "请求失败");
-      return data;
+    if (!ok || !data.ok) {
+      setDot(currentPlatform, "err");
+      refreshBadge(currentPlatform);
+      toast("登录失败", data.error || "未知错误", "err");
+      log("登录失败：" + (data.error || "未知"), "err");
+    } else {
+      setDot(currentPlatform, "ok");
+      refreshBadge(currentPlatform);
+      toast("登录成功", "Cookie 已保存", "ok");
+      log("登录成功，Cookie 已保存 ✓", "ok");
     }
+  } catch (e) {
+    setDot(currentPlatform, "");
+    refreshBadge(currentPlatform);
+    toast("请求失败", String(e.message || e), "err");
+    log("请求失败：" + e, "err");
+  } finally {
+    btnLoading(btn, false);
+    hideProgress();
+  }
+};
 
-    $("btnLogin").onclick = async () => {
-      const account = $("account").value.trim();
-      if (!account) { setLog("请填写账号别名", "err"); return; }
-      setLog("正在打开登录流程，请按终端或浏览器的提示扫码…");
-      $("btnLogin").disabled = true;
-      try {
-        const data = await postJson("/api/login", {
-          platform: platform(),
-          account,
-          headed: $("loginHeaded").checked,
-        });
-        setLog(JSON.stringify(data, null, 2), "ok");
-      } catch (e) {
-        setLog(String(e.message || e), "err");
-      } finally {
-        $("btnLogin").disabled = false;
-      }
-    };
+// ─────────────────────────────────────────────
+// B站 modal
+// ─────────────────────────────────────────────
+$("btnBiliClose").onclick = () => $("biliModal").classList.add("hidden");
+$("biliModal").onclick = e => { if (e.target === $("biliModal")) $("biliModal").classList.add("hidden"); };
+$("btnCopyCmd").onclick = () => {
+  navigator.clipboard.writeText($("biliCmd").textContent).then(() => {
+    toast("已复制", "粘贴到 PowerShell 执行", "ok", 2000);
+  });
+};
 
-    $("btnCheck").onclick = async () => {
-      const account = $("account").value.trim();
-      if (!account) { setLog("请填写账号别名", "err"); return; }
-      $("btnCheck").disabled = true;
-      try {
-        const data = await postJson("/api/check", { platform: platform(), account });
-        setLog(data.valid ? "Cookie 有效" : "Cookie 无效或已过期，请重新登录\n" + JSON.stringify(data), data.valid ? "ok" : "err");
-      } catch (e) {
-        setLog(String(e.message || e), "err");
-      } finally {
-        $("btnCheck").disabled = false;
-      }
-    };
+// ─────────────────────────────────────────────
+// Upload video
+// ─────────────────────────────────────────────
+$("btnUploadVideo").onclick = async () => {
+  const account = $("account").value.trim();
+  if (!account) { toast("请先填写账号别名", "", "warn"); return; }
+  const f = $("videoFile").files[0];
+  if (!f) { toast("请选择视频文件", "", "warn"); return; }
+  const title = $("vTitle").value.trim();
+  if (!title) { toast("请填写标题", "", "warn"); return; }
+  if (currentPlatform === "bilibili") {
+    const tid = $("tid").value.trim();
+    if (!tid || isNaN(Number(tid))) { toast("请填写 B 站分区 tid", "", "warn"); return; }
+  }
 
-    $("btnUploadVideo").onclick = async () => {
-      const account = $("account").value.trim();
-      if (!account) { setLog("请填写账号别名", "err"); return; }
-      const f = $("videoFile").files[0];
-      if (!f) { setLog("请选择视频文件", "err"); return; }
-      const title = $("vTitle").value.trim();
-      if (!title) { setLog("请填写标题", "err"); return; }
-      const fd = new FormData();
-      fd.append("platform", platform());
-      fd.append("account", account);
-      fd.append("video", f);
-      fd.append("title", title);
-      fd.append("desc", $("vDesc").value);
-      fd.append("tags", $("vTags").value);
-      fd.append("schedule", $("vSchedule").value.trim());
-      fd.append("headless", $("vHeadless").checked ? "true" : "false");
-      fd.append("debug", $("vDebug").checked ? "true" : "false");
-      if (platform() === "bilibili") {
-        fd.append("tid", $("tid").value || "");
-      }
-      if (platform() === "douyin") {
-        const t = $("vThumb").files[0];
-        if (t) fd.append("thumbnail", t);
-        fd.append("product_link", $("productLink").value);
-        fd.append("product_title", $("productTitle").value);
-      }
-      setLog("正在上传视频，请勿关闭窗口…");
-      $("btnUploadVideo").disabled = true;
-      try {
-        const res = await fetch("/api/upload/video", { method: "POST", body: fd });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || res.statusText);
-        setLog(JSON.stringify(data, null, 2), "ok");
-      } catch (e) {
-        setLog(String(e.message || e), "err");
-      } finally {
-        $("btnUploadVideo").disabled = false;
-      }
-    };
+  const btn = $("btnUploadVideo");
+  btnLoading(btn, true);
+  showProgress("正在上传视频…", `${f.name}（${(f.size/1024/1024).toFixed(1)} MB），请耐心等待`);
+  log(`开始上传视频「${title}」到 ${currentPlatform}…`, "info");
 
-    $("btnUploadNote").onclick = async () => {
-      if (platform() === "bilibili") {
-        setLog("B 站请使用「上传视频」", "err");
-        return;
-      }
-      const account = $("account").value.trim();
-      if (!account) { setLog("请填写账号别名", "err"); return; }
-      const files = $("noteImages").files;
-      if (!files.length) { setLog("请选择至少一张图片", "err"); return; }
-      const title = $("nTitle").value.trim();
-      if (!title) { setLog("请填写图文标题", "err"); return; }
-      const fd = new FormData();
-      fd.append("platform", platform());
-      fd.append("account", account);
-      for (let i = 0; i < files.length; i++) fd.append("images", files[i]);
-      fd.append("title", title);
-      fd.append("note", $("nNote").value);
-      fd.append("tags", $("nTags").value);
-      fd.append("schedule", $("nSchedule").value.trim());
-      fd.append("headless", $("nHeadless").checked ? "true" : "false");
-      fd.append("debug", $("nDebug").checked ? "true" : "false");
-      setLog("正在发布图文…");
-      $("btnUploadNote").disabled = true;
-      try {
-        const res = await fetch("/api/upload/note", { method: "POST", body: fd });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || res.statusText);
-        setLog(JSON.stringify(data, null, 2), "ok");
-      } catch (e) {
-        setLog(String(e.message || e), "err");
-      } finally {
-        $("btnUploadNote").disabled = false;
-      }
-    };
-  </script>
+  const fd = new FormData();
+  fd.append("platform", currentPlatform);
+  fd.append("account", account);
+  fd.append("video", f);
+  fd.append("title", title);
+  fd.append("desc", $("vDesc").value);
+  fd.append("tags", $("vTags").value);
+  fd.append("schedule", $("vSchedule").value.trim());
+  fd.append("headless", $("vHeadless").checked ? "true" : "false");
+  fd.append("debug", $("vDebug").checked ? "true" : "false");
+  if (currentPlatform === "bilibili") fd.append("tid", $("tid").value);
+  if (currentPlatform === "douyin") {
+    const t = $("vThumb").files[0];
+    if (t) fd.append("thumbnail", t);
+  }
+
+  try {
+    const res = await fetch("/api/upload/video", { method: "POST", body: fd });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast("上传失败", data.error || res.statusText, "err");
+      log("上传失败：" + (data.error || res.statusText), "err");
+    } else {
+      toast("上传成功 🎉", data.message || "视频已提交到平台", "ok");
+      log("上传成功：" + (data.message || ""), "ok");
+    }
+  } catch (e) {
+    toast("请求失败", String(e.message || e), "err");
+    log("请求失败：" + e, "err");
+  } finally {
+    btnLoading(btn, false);
+    hideProgress();
+  }
+};
+
+// ─────────────────────────────────────────────
+// Upload note
+// ─────────────────────────────────────────────
+$("btnUploadNote").onclick = async () => {
+  if (currentPlatform === "bilibili") {
+    toast("B 站不支持图文上传", "请切换到视频上传", "warn");
+    return;
+  }
+  const account = $("account").value.trim();
+  if (!account) { toast("请先填写账号别名", "", "warn"); return; }
+  const files = $("noteImages").files;
+  if (!files.length) { toast("请选择至少一张图片", "", "warn"); return; }
+  const title = $("nTitle").value.trim();
+  if (!title) { toast("请填写图文标题", "", "warn"); return; }
+
+  const btn = $("btnUploadNote");
+  btnLoading(btn, true);
+  showProgress("正在发布图文…", `共 ${files.length} 张图片`);
+  log(`开始发布图文「${title}」到 ${currentPlatform}…`, "info");
+
+  const fd = new FormData();
+  fd.append("platform", currentPlatform);
+  fd.append("account", account);
+  for (let i = 0; i < files.length; i++) fd.append("images", files[i]);
+  fd.append("title", title);
+  fd.append("note", $("nNote").value);
+  fd.append("tags", $("nTags").value);
+  fd.append("schedule", $("nSchedule").value.trim());
+  fd.append("headless", $("nHeadless").checked ? "true" : "false");
+  fd.append("debug", $("nDebug").checked ? "true" : "false");
+
+  try {
+    const res = await fetch("/api/upload/note", { method: "POST", body: fd });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast("发布失败", data.error || res.statusText, "err");
+      log("发布失败：" + (data.error || res.statusText), "err");
+    } else {
+      toast("发布成功 🎉", data.message || "图文已提交", "ok");
+      log("发布成功：" + (data.message || ""), "ok");
+    }
+  } catch (e) {
+    toast("请求失败", String(e.message || e), "err");
+    log("请求失败：" + e, "err");
+  } finally {
+    btnLoading(btn, false);
+    hideProgress();
+  }
+};
+
+// init
+setPlatform("douyin");
+</script>
 </body>
 </html>

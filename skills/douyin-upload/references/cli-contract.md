@@ -42,8 +42,6 @@ sau douyin upload-video \
   [--tags tag1,tag2] \
   [--schedule "YYYY-MM-DD HH:MM"] \
   [--thumbnail <image-path>] \
-  [--product-link <url>] \
-  [--product-title "<title>"] \
   [--debug] \
   [--headless | --headed]
 ```
@@ -57,8 +55,6 @@ sau douyin upload-video \
   - `--tags`
   - `--schedule`
   - `--thumbnail`
-  - `--product-link`
-  - `--product-title`
   - `--debug`
   - `--headless`
   - `--headed`

@@ -294,79 +294,6 @@ class DouYinBaseUploader(BaseVideoUploader):
         await page.wait_for_selector('div[role="listbox"] [role="option"]', timeout=5000)
         await page.locator('div[role="listbox"] [role="option"]').first.click()
 
-    async def handle_product_dialog(self, page: Page, product_title: str):
-        await page.wait_for_timeout(2000)
-        await page.wait_for_selector('input[placeholder="请输入商品短标题"]', timeout=10000)
-        short_title_input = page.locator('input[placeholder="请输入商品短标题"]')
-        if not await short_title_input.count():
-            douyin_logger.error(_msg("😵", "没找到商品短标题输入框"))
-            return False
-
-        product_title = product_title[:10]
-        await short_title_input.fill(product_title)
-        await page.wait_for_timeout(1000)
-
-        finish_button = page.locator('button:has-text("完成编辑")')
-        if "disabled" not in await finish_button.get_attribute("class"):
-            await finish_button.click()
-            douyin_logger.debug(_msg("🥳", "已点击“完成编辑”按钮"))
-            await page.wait_for_selector(".semi-modal-content", state="hidden", timeout=5000)
-            return True
-
-        douyin_logger.error(_msg("😵", "“完成编辑”按钮是灰的，小人先把弹窗关掉"))
-        cancel_button = page.locator('button:has-text("取消")')
-        if await cancel_button.count():
-            await cancel_button.click()
-        else:
-            close_button = page.locator(".semi-modal-close")
-            await close_button.click()
-        await page.wait_for_selector(".semi-modal-content", state="hidden", timeout=5000)
-        return False
-
-    async def set_product_link(self, page: Page, product_link: str, product_title: str):
-        await page.wait_for_timeout(2000)
-        try:
-            await page.wait_for_selector("text=添加标签", timeout=10000)
-            dropdown = page.get_by_text("添加标签").locator("..").locator("..").locator("..").locator(".semi-select").first
-            if not await dropdown.count():
-                douyin_logger.error(_msg("😵", "没找到标签下拉框"))
-                return False
-            douyin_logger.debug(_msg("🧍", "找到标签下拉框，小人准备选择“购物车”"))
-            await dropdown.click()
-            await page.wait_for_selector('[role="listbox"]', timeout=5000)
-            await page.locator('[role="option"]:has-text("购物车")').click()
-            douyin_logger.debug(_msg("🥳", "已经选中“购物车”"))
-
-            await page.wait_for_selector('input[placeholder="粘贴商品链接"]', timeout=5000)
-            input_field = page.locator('input[placeholder="粘贴商品链接"]')
-            await input_field.fill(product_link)
-            douyin_logger.debug(_msg("🔗", f"商品链接已经填好了: {product_link}"))
-
-            add_button = page.locator('span:has-text("添加链接")')
-            button_class = await add_button.get_attribute("class")
-            if "disable" in button_class:
-                douyin_logger.error(_msg("😵", "“添加链接”按钮现在点不了"))
-                return False
-            await add_button.click()
-            douyin_logger.debug(_msg("🥳", "已点击“添加链接”按钮"))
-
-            await page.wait_for_timeout(2000)
-            error_modal = page.locator("text=未搜索到对应商品")
-            if await error_modal.count():
-                confirm_button = page.locator('button:has-text("确定")')
-                await confirm_button.click()
-                douyin_logger.error(_msg("😢", "这个商品链接无效"))
-                return False
-
-            if not await self.handle_product_dialog(page, product_title):
-                return False
-
-            douyin_logger.debug(_msg("🥳", "商品链接设置好了"))
-            return True
-        except Exception as e:
-            douyin_logger.error(_msg("😢", f"设置商品链接时出错: {str(e)}"))
-            return False
-
 
 class DouYinVideo(DouYinBaseUploader):
     def __init__(
@@ -377,8 +304,6 @@ class DouYinVideo(DouYinBaseUploader):
         publish_date: datetime | int,
         account_file,
         thumbnail_landscape_path=None,
-        productLink="",
-        productTitle="",
         thumbnail_portrait_path=None,
         desc: str | None = None,
         publish_strategy: str = DOUYIN_PUBLISH_STRATEGY_IMMEDIATE,
@@ -397,8 +322,6 @@ class DouYinVideo(DouYinBaseUploader):
         self.tags = tags
         self.thumbnail_landscape_path = thumbnail_landscape_path
         self.thumbnail_portrait_path = thumbnail_portrait_path
-        self.productLink = productLink
-        self.productTitle = productTitle
         self.desc = desc or ""
 
     async def validate_upload_args(self):
@@ -524,11 +447,6 @@ class DouYinVideo(DouYinBaseUploader):
             except Exception:
                 douyin_logger.debug(_msg("🧍", "小人还在等视频上传完成"))
                 await asyncio.sleep(2)
-
-        if self.productLink and self.productTitle:
-            douyin_logger.info(_msg("🛒", "小人正在设置商品链接"))
-            await self.set_product_link(page, self.productLink, self.productTitle)
-            douyin_logger.info(_msg("🥳", "商品链接设置完成"))
 
         await self.set_thumbnail(page)
 
